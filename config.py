@@ -1,3 +1,6 @@
+import os
+
+
 class LLMConfig:
     """
     Configuration class for LLM (Language Learning Model).
@@ -24,7 +27,7 @@ class APIConfig:
     This class holds the parameters for the API configuration.
     """
 
-    HOST = "http://localhost:8000"
+    HOST = os.getenv("API_HOST", "http://localhost:8000")
 
 
 class SemanticSearchConfig:
