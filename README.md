@@ -9,9 +9,27 @@
 [![Poetry](https://img.shields.io/badge/Poetry-Package%20Manager-60A5FA.svg?logo=poetry&logoColor=white)](https://python-poetry.org/)
 [![Docker](https://img.shields.io/badge/Docker-Orchestrated-2496ED.svg?logo=docker&logoColor=white)](https://www.docker.com/)
 
-A production-grade, end-to-end AI application built as the Capstone Project for the **Amazinum Data Science Camp 2025/2026**. 
+A practical AI engineering application combining **dense vector retrieval** across product catalog data with an **autonomous tool-augmented agent** implemented using **LangGraph**, served via an asynchronous **FastAPI** backend and an interactive **Streamlit** multi-page web UI.
 
-The system combines **dense semantic vector retrieval** across catalog products with an **autonomous tool-augmented LLM agent** implemented with **LangGraph**, served through an asynchronous **FastAPI** backend and an intuitive **Streamlit** multi-page web UI.
+---
+
+## 📌 Project Context & Authorship
+
+> [!NOTE]
+> **Course & Base Template Attribution:**  
+> This project was developed as the Capstone Task for the **Amazinum Data Science Camp 2025/2026** created by **Borys Lypa** and **Viktoria Tsebriy** ([Amazinum](https://amazinum.com)).  
+> The camp authors provided the foundational project skeleton, including the initial Streamlit interface, Pydantic schemas, data loader helper, sample catalog data, and unit test suites.
+
+### 🛠️ What I Actually Implemented:
+As part of the assignment requirements, I developed and filled in the core machine learning, vector search, agentic graph logic, and deployment configurations:
+
+| Module / Component | My Implementation Work |
+| :--- | :--- |
+| **Embedding Engine**<br>[`src/ds_capstone/vectorizer.py`](./src/ds_capstone/vectorizer.py) | - Hugging Face `AutoTokenizer` and `AutoModel` initialization.<br>- Device detection & tensor allocation (`cuda` vs `cpu`).<br>- **Attention-weighted average pooling** (`_average_pool`): expanding 2D attention masks to 3D, masking out padding tokens, summing embeddings, and applying token count clamping (`1e-9`) for numerical stability.<br>- **Embedding pipeline** (`embed`): edge case validation, prepending `"query: "` prefixes for asymmetric retrieval, padding/truncation, gradient-free inference (`torch.no_grad()`), and $L_2$ normalization (`F.normalize(p=2, dim=1)`). |
+| **Vector Indexing**<br>[`src/ds_capstone/search_index.py`](./src/ds_capstone/search_index.py) | - FAISS inner product index initialization (`faiss.IndexFlatIP`) for exact cosine similarity matching.<br>- Batch embedding insertion (`self.index.add`).<br>- Similarity search query execution (`self.index.search(query_embedding, k)`).<br>- Binary index persistence and disk loading (`faiss.write_index`, `faiss.read_index`). |
+| **LangGraph Agent**<br>[`src/ds_capstone/summarizer_graph.py`](./src/ds_capstone/summarizer_graph.py) | - Custom date tool definition with `@tool def get_current_date()`.<br>- Initializing `ChatOllama` with model name and temperature, and binding tools via `bind_tools()`.<br>- LCEL prompt chaining (`chain = prompt_template \| self.model_with_tools`) and execution.<br>- **LangGraph StateGraph assembly**: adding the `agent` reasoning node and `tools` node; configuring conditional routing (`tool_router`), start edges, and tool return loops (`tools` $\rightarrow$ `agent`). |
+| **FastAPI Endpoints**<br>[`api.py`](./api.py) | - Connected `/summarize/` endpoint to invoke the compiled LangGraph agent state machine.<br>- Connected `/semantic_search/` endpoint to vectorize incoming queries, query the FAISS index, and filter top-5 candidates with similarity thresholds. |
+| **Environment & Infrastructure**<br>[`tests/conftest.py`](./tests/conftest.py), [`Dockerfile`](./Dockerfile), [`docker-compose.yml`](./docker-compose.yml) | - Added OpenMP/KMP conflict environment fixes to enable seamless cross-platform test execution.<br>- Made `APIConfig.HOST` dynamic via environment variable (`API_HOST`) for container networking.<br>- Created multi-stage `Dockerfile` and `docker-compose.yml` to orchestrate FastAPI and Streamlit as a unified service. |
 
 ---
 
@@ -64,10 +82,10 @@ flowchart TD
 
 ---
 
-## ✨ Key Features
+## ✨ Features Overview
 
 ### 1. Dense Semantic Product Retrieval
-- **Deep Feature Representation**: Employs Hugging Face transformer models (`intfloat/multilingual-e5-large-instruct`) to generate dense semantic embeddings.
+- **Feature Extraction**: Uses Hugging Face transformer model (`intfloat/multilingual-e5-large-instruct`).
 - **Attention-Weighted Mean Pooling**: Correctly handles variable-length sequence masks and prevents division-by-zero errors via clamped token counting.
 - **Normalized Vector Matching**: Applies $L_2$ vector normalization so inner-product calculations (`faiss.IndexFlatIP`) precisely compute Cosine Similarity at $O(1)$ lookup speeds.
 - **Asymmetric Search Adaptation**: Automatically prepends task-specific retrieval prefixes (`query: `) for asymmetric search compatibility.
@@ -76,15 +94,15 @@ flowchart TD
 - **Cyclic State Machine**: Built on LangGraph `StateGraph` with typed `AgentState` managing message histories.
 - **Tool Calling**: Equips the model with dynamic function calling (`get_current_date` via `@tool`).
 - **Conditional Routing**: Automatically inspects model decisions with `tool_router` to route either to `ToolNode` or terminate at `END`.
-- **Local LLM Privacy**: Driven by **ChatOllama** (e.g. `llama3.2` or `phi3`), ensuring full local execution without external API dependencies.
+- **Local LLM Execution**: Driven by **ChatOllama** (e.g. `llama3.2` or `phi3`), ensuring privacy and local operation.
 
 ### 3. Production FastAPI REST Backend
-- **Zero Cold-Start Overhead**: Uses FastAPI lifespan management (`@asynccontextmanager`) to pre-warm the transformer model and load the FAISS index into memory during startup.
+- **Lifecycle Management**: Uses `@asynccontextmanager` to pre-warm the transformer model and load the FAISS index into memory during startup.
 - **Strict Data Validation**: Pydantic v2 data models validate and serialize all payload transactions.
-- **Interactive OpenAPI Specs**: Built-in Swagger UI (`/docs`) and ReDoc (`/redoc`).
+- **Interactive Documentation**: Auto-generated Swagger UI (`/docs`) and ReDoc (`/redoc`).
 
 ### 4. Interactive Streamlit Interface
-- Clean, responsive multi-page dashboard:
+- Multi-page application providing:
   - **Semantic Search**: Natural language query search with similarity scoring and metadata display.
   - **Text Summarizer & Assistant**: Real-time conversation interface powered by the LangGraph agent.
 
@@ -94,7 +112,7 @@ flowchart TD
 
 ```
 ds_camp_capstone_task/
-├── api.py                    # FastAPI server endpoints and lifecycle handlers
+├── api.py                    # FastAPI server endpoints and lifecycle handlers (Completed)
 ├── config.py                 # Centralized configuration (LLM, API, Paths)
 ├── Dockerfile                # Multi-stage production container definition
 ├── docker-compose.yml        # Orchestration for API + UI services
@@ -104,11 +122,11 @@ ds_camp_capstone_task/
 ├── src/
 │   └── ds_capstone/
 │       ├── __init__.py
-│       ├── data_loader.py    # Product dataset loading routines
-│       ├── models.py         # Pydantic schemas for API requests/responses
-│       ├── search_index.py   # FAISS IndexFlatIP management and search
-│       ├── summarizer_graph.py # LangGraph agent, tool definitions, state machine
-│       └── vectorizer.py     # Transformer model wrapper & mean pooling
+│       ├── data_loader.py    # Product dataset loading routines (Template provided)
+│       ├── models.py         # Pydantic schemas for API requests/responses (Template provided)
+│       ├── search_index.py   # FAISS IndexFlatIP management and search (Implemented)
+│       ├── summarizer_graph.py # LangGraph agent, tool definitions, state machine (Implemented)
+│       └── vectorizer.py     # Transformer model wrapper & mean pooling (Implemented)
 ├── tests/
 │   ├── conftest.py           # Environment and library conflict fixtures
 │   ├── test_api.py           # End-to-end API route test suite
@@ -116,10 +134,10 @@ ds_camp_capstone_task/
 │   ├── test_text_summarizer.py # LangGraph summarizer agent tests
 │   └── test_text_vectorizer.py # Hugging Face vectorizer unit tests
 └── ui/
-    ├── main_page.py          # Streamlit landing portal
+    ├── main_page.py          # Streamlit landing portal (Template provided)
     └── pages/
-        ├── base_chat.py      # Summarization / Agent chat interface
-        └── semantic_search.py# Semantic search UI
+        ├── base_chat.py      # Summarization / Agent chat interface (Template provided)
+        └── semantic_search.py# Semantic search UI (Template provided)
 ```
 
 ---
@@ -221,14 +239,13 @@ poetry run streamlit run ui/main_page.py
 
 ## 🧪 Testing & Code Quality
 
-The project includes unit and integration tests covering the API, vectorizer, FAISS index, and LangGraph agent.
+The project includes full unit test suites to validate each core module:
 
-Execute the test suite:
 ```bash
 poetry run pytest
 ```
 
-Run code formatting and linters:
+Formatting and linters:
 ```bash
 poetry run black --check .
 poetry run isort --check .
@@ -238,7 +255,7 @@ poetry run mypy src/ds_capstone
 
 ---
 
-## 👨‍💻 Author
+## 👥 Credits & Attribution
 
-Developed by **Ihor (Quuukie)** as part of the **Amazinum Data Science Camp**.
-- GitHub: [@Quuukie](https://github.com/Quuukie)
+- **Course & Task Design**: [Amazinum](https://amazinum.com) — Borys Lypa & Viktoria Tsebriy.
+- **Student Implementation**: [Ihor (Quuukie)](https://github.com/Quuukie) — Core ML pooling math, FAISS index management, LangGraph agent cyclic workflow, FastAPI integration, and container orchestration.
