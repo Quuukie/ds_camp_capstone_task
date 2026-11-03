@@ -25,11 +25,11 @@ As part of the assignment requirements, I developed and filled in the core machi
 
 | Module / Component | My Implementation Work |
 | :--- | :--- |
-| **Embedding Engine**<br>[`src/ds_capstone/vectorizer.py`](./src/ds_capstone/vectorizer.py) | - Hugging Face `AutoTokenizer` and `AutoModel` initialization.<br>- Device detection & tensor allocation (`cuda` vs `cpu`).<br>- **Attention-weighted average pooling** (`_average_pool`): expanding 2D attention masks to 3D, masking out padding tokens, summing embeddings, and applying token count clamping (`1e-9`) for numerical stability.<br>- **Embedding pipeline** (`embed`): edge case validation, prepending `"query: "` prefixes for asymmetric retrieval, padding/truncation, gradient-free inference (`torch.no_grad()`), and $L_2$ normalization (`F.normalize(p=2, dim=1)`). |
+| **Embedding Engine**<br>[`src/ds_capstone/vectorizer.py`](./src/ds_capstone/vectorizer.py) | - Hugging Face `AutoTokenizer` and `AutoModel` initialization.<br>- Device detection & tensor allocation (`cuda` vs `cpu`).<br>- **Attention-weighted average pooling** (`_average_pool`): expanding 2D attention masks to 3D, masking out padding tokens, summing embeddings, and applying token count clamping (`1e-9`) for numerical stability.<br>- **Embedding pipeline** (`embed`): edge case validation, prepending a configurable query prefix (`Instruct: …\nQuery: ` for the E5-instruct model) for asymmetric retrieval, padding/truncation, gradient-free inference (`torch.no_grad()`), and $L_2$ normalization (`F.normalize(p=2, dim=1)`). |
 | **Vector Indexing**<br>[`src/ds_capstone/search_index.py`](./src/ds_capstone/search_index.py) | - FAISS inner product index initialization (`faiss.IndexFlatIP`) for exact cosine similarity matching.<br>- Batch embedding insertion (`self.index.add`).<br>- Similarity search query execution (`self.index.search(query_embedding, k)`).<br>- Binary index persistence and disk loading (`faiss.write_index`, `faiss.read_index`). |
 | **LangGraph Agent**<br>[`src/ds_capstone/summarizer_graph.py`](./src/ds_capstone/summarizer_graph.py) | - Custom date tool definition with `@tool def get_current_date()`.<br>- Initializing `ChatOllama` with model name and temperature, and binding tools via `bind_tools()`.<br>- LCEL prompt chaining (`chain = prompt_template \| self.model_with_tools`) and execution.<br>- **LangGraph StateGraph assembly**: adding the `agent` reasoning node and `tools` node; configuring conditional routing (`tool_router`), start edges, and tool return loops (`tools` $\rightarrow$ `agent`). |
 | **FastAPI Endpoints**<br>[`api.py`](./api.py) | - Connected `/summarize/` endpoint to invoke the compiled LangGraph agent state machine.<br>- Connected `/semantic_search/` endpoint to vectorize incoming queries, query the FAISS index, and filter top-5 candidates with similarity thresholds. |
-| **Environment & Infrastructure**<br>[`tests/conftest.py`](./tests/conftest.py), [`Dockerfile`](./Dockerfile), [`docker-compose.yml`](./docker-compose.yml) | - Added OpenMP/KMP conflict environment fixes to enable seamless cross-platform test execution.<br>- Made `APIConfig.HOST` dynamic via environment variable (`API_HOST`) for container networking.<br>- Created multi-stage `Dockerfile` and `docker-compose.yml` to orchestrate FastAPI and Streamlit as a unified service. |
+| **Environment & Infrastructure**<br>[`tests/conftest.py`](./tests/conftest.py), [`Dockerfile`](./Dockerfile), [`docker-compose.yml`](./docker-compose.yml) | - Added OpenMP/KMP conflict environment fixes to enable seamless cross-platform test execution.<br>- Made `APIConfig.HOST`, the LLM model name and the Ollama URL configurable via environment variables (`API_HOST`, `LLM_MODEL_NAME`, `OLLAMA_BASE_URL`) for container networking.<br>- Created a `Dockerfile` and `docker-compose.yml` that orchestrate Ollama, FastAPI and Streamlit as one stack. |
 
 ---
 
@@ -87,8 +87,9 @@ flowchart TD
 ### 1. Dense Semantic Product Retrieval
 - **Feature Extraction**: Uses Hugging Face transformer model (`intfloat/multilingual-e5-large-instruct`).
 - **Attention-Weighted Mean Pooling**: Correctly handles variable-length sequence masks and prevents division-by-zero errors via clamped token counting.
-- **Normalized Vector Matching**: Applies $L_2$ vector normalization so inner-product calculations (`faiss.IndexFlatIP`) precisely compute Cosine Similarity at $O(1)$ lookup speeds.
-- **Asymmetric Search Adaptation**: Automatically prepends task-specific retrieval prefixes (`query: `) for asymmetric search compatibility.
+- **Normalized Vector Matching**: Applies $L_2$ vector normalization so inner-product calculations (`faiss.IndexFlatIP`) precisely compute Cosine Similarity via exact (brute-force) search, which is ideal for a small catalog.
+- **Asymmetric Search Adaptation**: Automatically prepends the task instruction (`Instruct: …\nQuery: `) that the E5-instruct model expects on queries; documents are embedded without a prefix.
+- **Stale Index Detection**: Rebuilds the saved FAISS index on startup if its size no longer matches the product catalog.
 
 ### 2. Autonomous Agentic LLM Workflow (LangGraph)
 - **Cyclic State Machine**: Built on LangGraph `StateGraph` with typed `AgentState` managing message histories.
@@ -146,11 +147,13 @@ ds_camp_capstone_task/
 
 ### Method 1: Using Docker Compose (Recommended)
 
-Run both the FastAPI backend and Streamlit UI in isolated containers with a single command:
+Run Ollama, the FastAPI backend and the Streamlit UI in isolated containers with a single command:
 
 ```bash
 docker compose up --build
 ```
+
+The first start pulls the `llama3.2` model into the `ollama-models` volume and downloads the embedding model (~2 GB) into the `hf-cache` volume, so it takes a while; later starts reuse both. The UI waits until the API's health check passes.
 
 - **Streamlit Web UI**: [http://localhost:8501](http://localhost:8501)
 - **FastAPI Documentation (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
@@ -167,6 +170,7 @@ docker compose up --build
   ```bash
   ollama pull llama3.2
   ```
+- Optional environment variables: `LLM_MODEL_NAME` (default `llama3.2`), `OLLAMA_BASE_URL` (default `http://localhost:11434`), `API_HOST` (default `http://localhost:8000`).
 
 #### 1. Install Dependencies
 ```bash

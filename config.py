@@ -1,3 +1,4 @@
+# Standart library imports
 import os
 
 
@@ -9,7 +10,8 @@ class LLMConfig:
 
     TEMPERATURE = 0.0
 
-    MODEL_NAME = "llama3.2"
+    MODEL_NAME = os.getenv("LLM_MODEL_NAME", "llama3.2")
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     TOP_P = 0.7
     TOP_K = 50
     REPETITION_PENALTY = 1
@@ -34,3 +36,8 @@ class SemanticSearchConfig:
     EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large-instruct"
     PRODUCTS_CSV_PATH = "./data/products.csv"
     FAISS_INDEX_PATH = "./data/products.index"
+
+    # The *-instruct E5 models expect queries as "Instruct: <task>\nQuery: <query>"; documents get no prefix
+    QUERY_PREFIX = "Instruct: Given a product search query, retrieve relevant products\nQuery: "
+    TOP_K = 5
+    SIMILARITY_THRESHOLD = 0.8

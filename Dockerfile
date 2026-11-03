@@ -4,12 +4,13 @@ FROM python:3.12-slim
 # Set environment variables for Python and Poetry
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    POETRY_VERSION=1.8.4 \
+    POETRY_VERSION=2.1.3 \
     POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_CREATE=false \
     POETRY_NO_INTERACTION=1 \
     KMP_DUPLICATE_LIB_OK="TRUE" \
-    OMP_NUM_THREADS="1"
+    OMP_NUM_THREADS="1" \
+    PYTHONPATH="/app/src:/app"
 
 # Add Poetry to PATH
 ENV PATH="$POETRY_HOME/bin:$PATH"

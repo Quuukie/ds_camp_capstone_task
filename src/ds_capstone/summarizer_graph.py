@@ -28,7 +28,7 @@ Examples
 # Standart library imports
 # Standard library imports
 from datetime import datetime
-from typing import Annotated, TypedDict
+from typing import Annotated, Optional, TypedDict
 
 # Thirdparty imports
 from langchain_core.messages import BaseMessage, HumanMessage
@@ -149,7 +149,7 @@ class SummarizerAgent:
     'Summary of the provided text...'
     """
 
-    def __init__(self, model_name: str = "phi3") -> None:
+    def __init__(self, model_name: str = "phi3", base_url: Optional[str] = None) -> None:
         """
         Initialize the SummarizerAgent with specified model and tools.
 
@@ -157,12 +157,14 @@ class SummarizerAgent:
         ----------
         model_name : str, optional
             The name of the Ollama model to use, by default "phi3"
+        base_url : str, optional
+            URL of the Ollama server. None uses the client default (http://localhost:11434).
         """
         # 1. Define the tools the agent can use
         self.tools = [get_current_date]
 
         # 2. Set up the language model with temperature from config
-        self.llm = ChatOllama(model=model_name, temperature=LLMConfig.TEMPERATURE)
+        self.llm = ChatOllama(model=model_name, temperature=LLMConfig.TEMPERATURE, base_url=base_url)
 
         # 3. Bind the tools to the model to enable tool calling capabilities
         self.model_with_tools = self.llm.bind_tools(self.tools)

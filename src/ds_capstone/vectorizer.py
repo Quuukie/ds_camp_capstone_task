@@ -52,13 +52,17 @@ class TextVectorizer:
     (2, 384)
     """
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, query_prefix: str = "query: ") -> None:
         """Initialize the TextVectorizer with a pre-trained model.
 
         Parameters
         ----------
         model_name : str
             Name of the pre-trained transformer model from HuggingFace.
+        query_prefix : str, optional
+            Prefix prepended to query texts when ``is_query=True``. The default
+            suits base E5 models; ``*-instruct`` variants expect
+            ``"Instruct: <task>\\nQuery: "`` instead.
 
         Raises
         ------
@@ -68,6 +72,7 @@ class TextVectorizer:
         # Load tokenizer and model from HuggingFace
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name)
+        self.query_prefix: str = query_prefix
 
         # Set device based on CUDA availability
         self.device: str = "cuda" if torch.cuda.is_available() else "cpu"
@@ -128,7 +133,7 @@ class TextVectorizer:
             Input text(s) to be converted to embeddings. Can be a single
             string or a list of strings.
         is_query : bool, optional
-            Whether the input texts are queries. If True, prepends "query: "
+            Whether the input texts are queries. If True, prepends ``query_prefix``
             to each text for better query-document similarity (default: False).
 
         Returns
@@ -159,7 +164,7 @@ class TextVectorizer:
 
         # Prepend query prefix if this is a query embedding
         if is_query:
-            texts = [f"query: {text}" for text in texts]
+            texts = [f"{self.query_prefix}{text}" for text in texts]
 
         # Tokenize texts with padding and truncation
         inputs = self.tokenizer(

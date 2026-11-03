@@ -1,4 +1,17 @@
 services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: capstone-ollama
+    # Start the server, pull the model once (cached in the volume), then keep serving
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull $${LLM_MODEL_NAME} && wait"]
+    environment:
+      - LLM_MODEL_NAME=llama3.2
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - capstone-net
+
   api:
     build:
       context: .
@@ -11,8 +24,20 @@ services:
       - PYTHONUNBUFFERED=1
       - KMP_DUPLICATE_LIB_OK=TRUE
       - OMP_NUM_THREADS=1
+      - LLM_MODEL_NAME=llama3.2
+      - OLLAMA_BASE_URL=http://ollama:11434
     volumes:
       - ./data:/app/data
+      - hf-cache:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      # First start downloads the embedding model (~2 GB)
+      start_period: 600s
+    depends_on:
+      - ollama
     restart: unless-stopped
     networks:
       - capstone-net
@@ -29,10 +54,15 @@ services:
       - API_HOST=http://api:8000
       - PYTHONUNBUFFERED=1
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - capstone-net
+
+volumes:
+  ollama-models:
+  hf-cache:
 
 networks:
   capstone-net:

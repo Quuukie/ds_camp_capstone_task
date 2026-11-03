@@ -14,7 +14,7 @@ skip-string-normalization = true
 
 [tool.mypy]
 disallow_untyped_defs = true
-files = "ds_capstone/**/*.py"
+files = "src/ds_capstone/**/*.py"
 exclude = "^tests/"
 ignore_missing_imports = true
 
@@ -38,8 +38,6 @@ import_heading_localfolder = "Local folder imports"
 python = "^3.12"
 langchain-core = "^0.3.5"
 langchain-community = "^0.3.5"
-langchain-openai = "^0.2.7"
-langsmith = "^0.3.45"
 langgraph = "^0.3.5"
 langchain-ollama = "^0.3.5"
 streamlit = "^1.40.2"
@@ -50,6 +48,7 @@ faiss-cpu = "^1.11.0.post1"
 torch = "^2.7.1"
 transformers = "^4.54.1"
 pandas = "^2.3.1"
+requests = "^2.32.3"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"

@@ -35,6 +35,9 @@ def load_and_preprocess_data(file_path: str) -> pd.DataFrame:
         products = pd.read_csv(file_path)
 
         products.columns = products.columns.str.replace(' ', '')
+        # The CSV is column-aligned with spaces, so text values carry padding
+        text_columns = products.select_dtypes(include="object").columns
+        products[text_columns] = products[text_columns].apply(lambda col: col.str.strip())
         products.set_index('id', inplace=True)
 
         products["text"] = products.apply(

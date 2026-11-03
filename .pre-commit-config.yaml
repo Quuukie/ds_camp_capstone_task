@@ -7,6 +7,7 @@ repos:
         entry: poetry run black . --check
         language: system
         types: [python]
+        pass_filenames: false
 
   - repo: local
     hooks:
@@ -15,6 +16,7 @@ repos:
         entry: poetry run isort --check-only --diff --stdout .
         language: system
         types: [python]
+        pass_filenames: false
 
   - repo: local
     hooks:
@@ -23,6 +25,7 @@ repos:
         entry: poetry run flake8 .
         language: system
         types: [python]
+        pass_filenames: false
 
   - repo: local
     hooks:
@@ -31,3 +34,4 @@ repos:
         entry: poetry run mypy .
         language: system
         types: [python]
+        pass_filenames: false
