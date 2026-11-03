@@ -12,9 +12,6 @@ class LLMConfig:
 
     MODEL_NAME = os.getenv("LLM_MODEL_NAME", "llama3.2")
     OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    TOP_P = 0.7
-    TOP_K = 50
-    REPETITION_PENALTY = 1
 
     SYSTEM_PROMPT = """If user asks to get a current date execute get_current_date tool.
 Otherwise, return a text summary of user input - short representation of the text.
